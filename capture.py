@@ -23,6 +23,7 @@ class Overlay(QWidget):
     def __init__(self):
         super().__init__()
         self._resizing = False
+        self._last_button = None
         self._resize_edges = None
         self._start_pos = None
         self._start_geometry = None
@@ -53,6 +54,7 @@ class Overlay(QWidget):
         )
 
         keyboard.add_hotkey("f12", self.make_screen)
+        keyboard.add_hotkey("alt", self.make_screen)
         # self.make_screen()
 
     def paintEvent(self, event):
@@ -123,8 +125,9 @@ class Overlay(QWidget):
         return left, right, top, bottom
 
     def mousePressEvent(self, event):
-        if event.button() != Qt.MouseButton.LeftButton:
+        if event.button() not in [Qt.MouseButton.LeftButton, Qt.MouseButton.RightButton]:
             return
+        self._last_button = event.button()
 
         edges = self._get_edges(event.pos())
 
@@ -144,17 +147,20 @@ class Overlay(QWidget):
 
         rect = QRect(self._start_geometry)
 
-        if left:
+        if self._last_button == Qt.MouseButton.RightButton:
             rect.setLeft(rect.left() + delta.x())
-
-        if right:
             rect.setRight(rect.right() + delta.x())
-
-        if top:
             rect.setTop(rect.top() + delta.y())
-
-        if bottom:
             rect.setBottom(rect.bottom() + delta.y())
+        else:
+            if left:
+                rect.setLeft(rect.left() + delta.x())
+            if right:
+                rect.setRight(rect.right() + delta.x())
+            if top:
+                rect.setTop(rect.top() + delta.y())
+            if bottom:
+                rect.setBottom(rect.bottom() + delta.y())
 
         min_width = 50
         min_height = 50

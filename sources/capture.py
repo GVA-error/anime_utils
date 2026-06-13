@@ -1,11 +1,10 @@
 import os
-import cv2
 import keyboard
-import numpy as np
 import pyperclip
-from PyQt6.QtCore import Qt, QTimer, QRect
+from PyQt6.QtCore import Qt, QRect
 from PyQt6.QtGui import QPainter, QPen, QIcon, QAction
 from PyQt6.QtWidgets import QApplication, QWidget, QSystemTrayIcon, QMenu
+from configparser import ConfigParser
 
 from paddleocr import PaddleOCR
 
@@ -24,8 +23,43 @@ class Overlay(QWidget):
         self._start_pos = None
         self._start_geometry = None
         self._handling = False
-        self.worker = None
+        # Default settings
+        self.capture_hotkey = "alt"
+        self.exit_hotkey = "f11"
+        self.language = "japan"
+        self.start_hidden = True
 
+        self.read_config()
+        self.add_tray()
+        self.add_square()
+        self.add_ocr()
+        self.add_hotkeys()
+
+
+    def add_hotkeys(self):
+        keyboard.add_hotkey(self.exit_hotkey, lambda : sys.exit(0))
+        keyboard.add_hotkey(self.capture_hotkey, self.make_screen)
+
+    def add_ocr(self):
+        self.ocr = PaddleOCR(
+            lang="japan",
+            device="cpu",
+            use_doc_orientation_classify=False,
+            use_doc_unwarping=False,
+            use_textline_orientation=True,
+            text_detection_model_name="PP-OCRv5_mobile_det",
+            text_recognition_model_name="PP-OCRv5_mobile_rec",
+        )
+
+    def add_square(self):
+        self.setWindowFlags(
+            Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.FramelessWindowHint
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.resize(400, 300)
+
+    def add_tray(self):
         tray = QSystemTrayIcon(self)
         tray.setIcon(QIcon("resources/icon.ico"))
 
@@ -38,32 +72,15 @@ class Overlay(QWidget):
 
         tray.setContextMenu(menu)
         tray.show()
-
         self.tray = tray
 
-        self.setWindowFlags(
-            Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.FramelessWindowHint
-        )
-
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-
-        self.resize(400, 300)
-
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.make_screen)
-        self.ocr = PaddleOCR(
-            lang="japan",  # японский язык
-            device="cpu",
-            use_doc_orientation_classify=False,
-            use_doc_unwarping=False,
-            use_textline_orientation=True,
-            text_detection_model_name="PP-OCRv4_server_det",
-            text_recognition_model_name="PP-OCRv4_server_rec",
-        )
-
-        # keyboard.add_hotkey("f12", self.make_screen)
-        keyboard.add_hotkey("alt", self.make_screen)
+    def read_config(self):
+        config = ConfigParser()
+        config.read("config.ini")
+        self.capture_hotkey = config["hotkeys"]["capture"]
+        self.exit_hotkey = config["hotkeys"]["exit"]
+        self.language = config["ocr"]["language"]
+        self.start_hidden = config.getboolean("app", "start_hidden")
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -87,19 +104,6 @@ class Overlay(QWidget):
             self.height()
         )
         pixmap.save("capture.png")
-
-        img = cv2.imread("../capture.png")
-
-        # диапазон "почти белого"
-        lower = np.array([200, 200, 200])
-        upper = np.array([255, 255, 255])
-
-        mask = cv2.inRange(img, lower, upper)
-
-        result = cv2.bitwise_and(img, img, mask=mask)
-
-        # cv2.imwrite("capture.png", result)
-
         result = self.ocr.predict("capture.png")
         text = []
         for line in result:
@@ -107,6 +111,7 @@ class Overlay(QWidget):
         cb_text = '\n'.join(text)
         pyperclip.copy(cb_text)
         self._handling = False
+        print(text)
 
 
     def _get_edges(self, pos):

@@ -8,14 +8,16 @@ Click "alt" or "alt+tab" to put the text in the clipboard.
 Ctrl+V:
 「腰壁を乗り越えて転落、だったわね。 何階かは記事に 書かれていなかった」
 
-# Why do you need use it?
- - It uses modern and strong model https://github.com/PADDLEPADDLE/PADDLEOCR 
+## Why do you need use it?
+ - It uses modern and pretty accurate model PP-OCRv5_mobile [link to read more](https://github.com/PADDLEPADDLE/PADDLEOCR)
  - It has simple interface.
 
-# Install
+## Install
 ### Windows
 
-# How to control it!
+## How to control it!
  - left mouse buton - change borders
  - right mouse buton - change position
  - click to tray icon to exit
+ - ![tray.png](resources/tray.png)
+
